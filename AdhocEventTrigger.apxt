@@ -1,25 +1,11 @@
-trigger AdhocEventTrigger on Adhoc_Event__c (after insert, after update , after delete)
-
-{
-    if(trigger.isafter)
-        {
-            
-            if(trigger.isInsert)
-            {
-                
-                AdhocEventTriggerHandler.doPost(trigger.new);
-            }
-            
-            if(trigger.isdelete)
-            {
-               
-                AdhocEventTriggerHandler.doDelete(trigger.old);
-            }
-                
-            if(trigger.isupdate)
-            {
-                
-				AdhocEventTriggerHandler.doUpdate(Trigger.new, Trigger.old);
-            }		
-        } 
+trigger AdhocEventTrigger on Adhoc_Event__c(after insert, after update, after delete) {
+  if (Trigger.isafter) {
+    if (Trigger.isInsert) {
+      AdhocEventTriggerHandler.doPost(Trigger.new);
+    } else if (Trigger.isdelete) {
+      AdhocEventTriggerHandler.doDelete(Trigger.old);
+    } else if (Trigger.isupdate) {
+      AdhocEventTriggerHandler.doUpdate(Trigger.new, Trigger.old);
+    }
+  }
 }
