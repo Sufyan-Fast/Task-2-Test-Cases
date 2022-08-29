@@ -1,7 +1,7 @@
 trigger AdhocEventTrigger on Adhoc_Event__c (after insert, after update , after delete)
 
 {
-            if(trigger.isafter)
+    if(trigger.isafter)
         {
             
             if(trigger.isInsert)

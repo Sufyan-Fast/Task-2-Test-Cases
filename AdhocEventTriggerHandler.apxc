@@ -1,6 +1,7 @@
 @RestResource(urlMapping='/Adhoc_Event__c/*')
 
-global with sharing class AdhocEventTriggerHandler {
+global with sharing class AdhocEventTriggerHandler 
+{
     
     public static HttpCalloutMock mock = null;
      
@@ -22,25 +23,22 @@ global with sharing class AdhocEventTriggerHandler {
 	    }
     
     
-     @HttpPost
-     global static void PostHttpRequest(String EventId, String eventSubject, String startDate, String endDate, String managerEmail)
-     {
+    @HttpPost
+    global static void PostHttpRequest(String EventId, String eventSubject, String startDate, String endDate, String managerEmail)
+    {
       
         JSONGenerator gen = JSON.createGenerator(true);
         gen.writeStartObject();
         gen.writeFieldName('end');
-        gen.writeStartObject();
-        
+        gen.writeStartObject();   
         gen.writeStringField('dateTime', endDate);
         gen.writeStringField('timeZone', 'Asia/Karachi');
         gen.writeEndObject();
         gen.writeFieldName('start');
-        gen.writeStartObject();
-        
+        gen.writeStartObject();       
         gen.writeStringField('dateTime', startDate);
         gen.writeStringField('timeZone', 'Asia/Karachi');
         gen.writeEndObject();
-        
         gen.writeStringField('summary', eventSubject);
         gen.writeFieldName('attendees');
         gen.writeStartArray();
@@ -67,43 +65,42 @@ global with sharing class AdhocEventTriggerHandler {
         request.setTimeout(120000);
         request.setBody(gen.getAsString()); 
          
-         HttpResponse response = new HttpResponse();
+        HttpResponse response = new HttpResponse();
         if (Test.isRunningTest() && (mock!=null)) 
-        {
-            response = mock.respond(request);
-        }
+            {
+                response = mock.respond(request);
+            }
 		else
-        {
-         response = (new Http()).send(request);
-       
-        }
+            {
+                response = (new Http()).send(request);
+            }
         
         
        	Map<String, Object> Obj = (Map<String, Object >)JSON.deserializeUntyped(response.getBody());
-         String Calenderid = String.Valueof(Obj.get('id'));
+        String Calenderid = String.Valueof(Obj.get('id'));
   
          
-         List<Adhoc_Event__c>  updateCalenderEventId = new List<Adhoc_Event__c>();
+        List<Adhoc_Event__c>  updateCalenderEventId = new List<Adhoc_Event__c>();
          
-         Adhoc_Event__c[] newobj = [SELECT Calender_Event_Id__c FROM Adhoc_Event__c WHERE ID = :EventId];
-         if(newobj.size() > 0)
-         {
-         newobj[0].Calender_Event_Id__c = Calenderid;			
-         updateCalenderEventId.add(newobj[0]);
-         }
+        Adhoc_Event__c[] newobj = [SELECT Calender_Event_Id__c FROM Adhoc_Event__c WHERE ID = :EventId];
+        if(newobj.size() > 0)
+           {
+                newobj[0].Calender_Event_Id__c = Calenderid;			
+                updateCalenderEventId.add(newobj[0]);
+           }
          
-         if(!updateCalenderEventId.isEmpty())
-        			{
-						update updateCalenderEventId;
-        			} 	 
-     }
+        if(!updateCalenderEventId.isEmpty())
+        	{
+				update updateCalenderEventId;
+        	} 	 
+    }
        
     public static String ToGoogleDateTime(DateTime SFTime)
     {
-    String DateStr = String.valueOf(SFTime.date());
-    String timeStr = String.valueOf(SFTime.time()); 
-    String calenderDataTime = DateStr + 'T' + timeStr; 
-    return calenderDataTime;
+        String DateStr = String.valueOf(SFTime.date());
+        String timeStr = String.valueOf(SFTime.time()); 
+        String calenderDataTime = DateStr + 'T' + timeStr; 
+        return calenderDataTime;
     }
     
     
@@ -113,36 +110,35 @@ global with sharing class AdhocEventTriggerHandler {
         for(Adhoc_Event__c adhoc : EventList)
         {
             deleteEvent(adhoc.Calender_Event_Id__c, adhoc.Subject__c, ToGoogleDateTime(adhoc.Start_Date__c), ToGoogleDateTime(adhoc.End_Date__c), adhoc.Manager_Email__c);
-       } 
+        } 
         
     }
     
-    	@future (callout=true)
-    	global static void deleteEvent(String EventId, String eventSubject, String startDate, String endDate, String managerEmail)
-        {
+    @future (callout=true)
+    global static void deleteEvent(String EventId, String eventSubject, String startDate, String endDate, String managerEmail)
+    {
             
         
         HttpRequest request = new HttpRequest();
-       
         request.setEndpoint('callout:Google_Calendar/calendars/primary/events/' + EventId);
         request.setHeader('Content-Type', 'application/json');
         request.setMethod('DELETE');
         request.setTimeout(120000);        
 
-       HttpResponse response = new HttpResponse();
+        HttpResponse response = new HttpResponse();
         if (Test.isRunningTest() && (mock!=null)) 
-        {
-            response = mock.respond(request);
-        }
+            {
+                response = mock.respond(request);
+            }
 		else
-        {
-         response = (new Http()).send(request);
+            {
+            response = (new Http()).send(request);
             
-        }   
+            }   
             
-	    }
+	}
   
-    	global static void doUpdate(List<Adhoc_Event__c> EventList,  List<Adhoc_Event__c> EventListold)
+    global static void doUpdate(List<Adhoc_Event__c> EventList,  List<Adhoc_Event__c> EventListold)
     {	 
         
         Adhoc_Event__c obj1 = EventList[0];
@@ -151,38 +147,33 @@ global with sharing class AdhocEventTriggerHandler {
           		|| obj1.Start_Date__c != obj2.Start_Date__c || obj1.End_Date__c != obj2.End_Date__c)
         {
 		
-        for(Adhoc_Event__c adhoc : EventList )
-        {
+            for(Adhoc_Event__c adhoc : EventList )
+            {
             
               updateEvent(adhoc.Calender_Event_Id__c, adhoc.Subject__c, ToGoogleDateTime(adhoc.Start_Date__c), ToGoogleDateTime(adhoc.End_Date__c), adhoc.Manager_Email__c);                   
-        } 
-            
-            
+            }     
         }
         
     }
     
     
-    	@future (callout=true)
-    	global static void updateEvent(String EventId, String eventSubject, String startDate, String endDate, String managerEmail)
-        {
-   
+    @future (callout=true)
+    global static void updateEvent(String EventId, String eventSubject, String startDate, String endDate, String managerEmail)
         
+    {
+   
         JSONGenerator gen = JSON.createGenerator(true);
         gen.writeStartObject();
         gen.writeFieldName('end');
         gen.writeStartObject();
-        
         gen.writeStringField('dateTime', endDate);
         gen.writeStringField('timeZone', 'Asia/Karachi');
         gen.writeEndObject();
         gen.writeFieldName('start');
-        gen.writeStartObject();
-       
+        gen.writeStartObject(); 
         gen.writeStringField('dateTime', startDate);
         gen.writeStringField('timeZone', 'Asia/Karachi');
         gen.writeEndObject();
-        
         gen.writeStringField('summary', eventSubject);
         gen.writeFieldName('attendees');
         gen.writeStartArray();
@@ -201,8 +192,8 @@ global with sharing class AdhocEventTriggerHandler {
         gen.writeEndArray();
         gen.writeEndObject();
 		
-        HttpRequest request = new HttpRequest();
-            
+        
+        HttpRequest request = new HttpRequest();           
         request.setEndpoint('callout:Google_Calendar/calendars/primary/events/' + EventId);
         request.setHeader('Content-Type', 'application/json');
         request.setMethod('PATCH');
@@ -212,16 +203,15 @@ global with sharing class AdhocEventTriggerHandler {
         //
          HttpResponse response = new HttpResponse();
         if (Test.isRunningTest() && (mock!=null)) 
-        {
-            response = mock.respond(request);
-        }
+            {
+                response = mock.respond(request);
+            }
 		else
-        {
-         response = (new Http()).send(request);
-            
-        }
-    
-        }
-    
+            {
+             response = (new Http()).send(request);   
+            }
     
     }
+    
+    
+}
