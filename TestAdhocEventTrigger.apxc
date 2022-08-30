@@ -1,5 +1,6 @@
 @isTest
-private class TestAdhocEventTrigger {
+private class TestAdhocEventTrigger 
+{
   @testSetup
   static void TestEventsOnAdhocEvent() {
     Adhoc_Event__c NewEvent = new Adhoc_Event__c();

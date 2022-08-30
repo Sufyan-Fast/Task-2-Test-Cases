@@ -1,6 +1,7 @@
 @isTest
 global class MockHttpResponseGenerator implements HttpCalloutMock
 {
+  
   global HTTPResponse respond(HTTPRequest req) {
     JSONGenerator gen = JSON.createGenerator(true);
     gen.writeStartObject();

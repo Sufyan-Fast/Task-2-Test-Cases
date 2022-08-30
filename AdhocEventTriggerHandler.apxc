@@ -158,7 +158,6 @@ global with sharing class AdhocEventTriggerHandler {
       );
     }
   }
-
   global static void UpdateHttpRequest(
     String EventId,
     String eventSubject,
