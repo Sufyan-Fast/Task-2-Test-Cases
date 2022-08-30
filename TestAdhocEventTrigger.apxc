@@ -1,6 +1,7 @@
 @isTest
 private class TestAdhocEventTrigger {
-  static Adhoc_Event__c TestEventsOnAdhocEvent() {
+  @testSetup
+  static void TestEventsOnAdhocEvent() {
     Adhoc_Event__c NewEvent = new Adhoc_Event__c();
     NewEvent.Name = 'Test';
     NewEvent.Subject__c = 'Testing the Trigger 1';
@@ -9,39 +10,24 @@ private class TestAdhocEventTrigger {
     NewEvent.Start_Date__c = startTime;
     NewEvent.End_Date__c = endTime;
     NewEvent.Manager_Email__c = 'sufyanashraf5469@gmail.com';
-    return NewEvent;
-  }
-
-  @isTest
-  static void TestHttpRequestInsert() {
-    Test.startTest();
     AdhocEventTriggerHandler.mock = new MockHttpResponseGenerator();
-    Database.SaveResult result = Database.insert(TestEventsOnAdhocEvent(), false);
-    Test.stopTest();
-    System.assert(result.isSuccess());
+    insert NewEvent;
   }
 
   @isTest
   static void TestHttpRequestUpdate() {
-    Adhoc_Event__c Event = TestEventsOnAdhocEvent();
-    insert Event;
-    Test.startTest();
     AdhocEventTriggerHandler.mock = new MockHttpResponseGenerator();
-    Adhoc_Event__c obj = new Adhoc_Event__c();
-    obj = [SELECT id FROM Adhoc_Event__c WHERE id = :Event.id];
+    Adhoc_Event__c obj = [SELECT id FROM Adhoc_Event__c WHERE Name = 'Test'];
     obj.Subject__c = 'Testing 2';
-    update obj;
-    Test.stopTest();
+    Database.SaveResult result = Database.update(obj, false);
+    System.assert(result.isSuccess());
   }
 
   @isTest
   static void TestHttpRequestDelete() {
-    Adhoc_Event__c Event = TestEventsOnAdhocEvent();
-    insert Event;
-    Test.startTest();
     AdhocEventTriggerHandler.mock = new MockHttpResponseGenerator();
-    Adhoc_Event__c obj = [SELECT id FROM Adhoc_Event__c WHERE id = :Event.id];
+    Adhoc_Event__c obj = [SELECT id FROM Adhoc_Event__c WHERE Name = 'Test'];
     Database.DeleteResult result = Database.Delete(obj, false);
-    Test.stopTest();
+    System.assert(result.isSuccess());
   }
 }

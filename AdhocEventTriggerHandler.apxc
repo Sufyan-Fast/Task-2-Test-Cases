@@ -1,31 +1,23 @@
-@RestResource(urlMapping='/Adhoc_Event__c/*')
 global with sharing class AdhocEventTriggerHandler {
   public static HttpCalloutMock mock = null;
 
-  global static void doPost(List<Adhoc_Event__c> EventList) {
-    for (Adhoc_Event__c adhoc : EventList) {
-      postEvent(
-        adhoc.Id,
-        adhoc.Subject__c,
-        ToGoogleDateTime(adhoc.Start_Date__c),
-        ToGoogleDateTime(adhoc.End_Date__c),
-        adhoc.Manager_Email__c
+  @future(callout=true)
+  global static void postEvent(Set<Id> Eventids) {
+    for (Adhoc_Event__c Event : [
+      SELECT Id, Subject__c, Start_Date__c, End_Date__c, Manager_Email__c
+      FROM Adhoc_Event__c
+      WHERE id IN :Eventids
+    ]) {
+      PostHttpRequest(
+        Event.Id,
+        Event.Subject__c,
+        ToGoogleDateTime(Event.Start_Date__c),
+        ToGoogleDateTime(Event.End_Date__c),
+        Event.Manager_Email__c
       );
     }
   }
 
-  @future(callout=true)
-  global static void postEvent(
-    String EventId,
-    String eventSubject,
-    String startDate,
-    String endDate,
-    String managerEmail
-  ) {
-    PostHttpRequest(EventId, eventSubject, startDate, endDate, managerEmail);
-  }
-
-  @HttpPost
   global static void PostHttpRequest(
     String EventId,
     String eventSubject,
@@ -101,25 +93,22 @@ global with sharing class AdhocEventTriggerHandler {
   }
 
   global static void doDelete(List<Adhoc_Event__c> EventList) {
+    List<String> Eventids = new List<String>();
     for (Adhoc_Event__c adhoc : EventList) {
-      deleteEvent(
-        adhoc.Calender_Event_Id__c,
-        adhoc.Subject__c,
-        ToGoogleDateTime(adhoc.Start_Date__c),
-        ToGoogleDateTime(adhoc.End_Date__c),
-        adhoc.Manager_Email__c
-      );
+      Eventids.add(adhoc.Calender_Event_Id__c);
     }
+
+    DeleteEvent(Eventids);
   }
 
   @future(callout=true)
-  global static void deleteEvent(
-    String EventId,
-    String eventSubject,
-    String startDate,
-    String endDate,
-    String managerEmail
-  ) {
+  global static void DeleteEvent(List<String> EventId) {
+    for (String ids : EventId) {
+      deleteHttpRequest(ids);
+    }
+  }
+
+  global static void deleteHttpRequest(String EventId) {
     HttpRequest request = new HttpRequest();
     request.setEndpoint('callout:Google_Calendar/calendars/primary/events/' + EventId);
     request.setHeader('Content-Type', 'application/json');
@@ -135,28 +124,42 @@ global with sharing class AdhocEventTriggerHandler {
   }
 
   global static void doUpdate(List<Adhoc_Event__c> EventList, List<Adhoc_Event__c> EventListold) {
-    Adhoc_Event__c obj1 = EventList[0];
-    Adhoc_Event__c obj2 = EventListold[0];
-    if (
-      obj1.Subject__c != obj2.Subject__c ||
-      obj1.Manager_Email__c != obj2.Manager_Email__c ||
-      obj1.Start_Date__c != obj2.Start_Date__c ||
-      obj1.End_Date__c != obj2.End_Date__c
-    ) {
-      for (Adhoc_Event__c adhoc : EventList) {
-        updateEvent(
-          adhoc.Calender_Event_Id__c,
-          adhoc.Subject__c,
-          ToGoogleDateTime(adhoc.Start_Date__c),
-          ToGoogleDateTime(adhoc.End_Date__c),
-          adhoc.Manager_Email__c
-        );
+    Integer i = 0;
+    List<String> ids = new List<String>();
+    while (i < EventList.size()) {
+      if (
+        EventList[i].Subject__c != EventListold[i].Subject__c ||
+        EventList[i].Manager_Email__c != EventListold[i].Manager_Email__c ||
+        EventList[i].Start_Date__c != EventListold[i].Start_Date__c ||
+        EventList[i].End_Date__c != EventListold[i].End_Date__c
+      ) {
+        ids.add(EventList[i].Id);
       }
+      i++;
+    }
+    if (!ids.isEmpty()) {
+      updateEvent(ids);
     }
   }
 
   @future(callout=true)
-  global static void updateEvent(
+  global static void updateEvent(List<String> eventids) {
+    for (Adhoc_Event__c Event : [
+      SELECT Id, Calender_Event_Id__c, Subject__c, Start_Date__c, End_Date__c, Manager_Email__c
+      FROM Adhoc_Event__c
+      WHERE id IN :eventids
+    ]) {
+      UpdateHttpRequest(
+        Event.Calender_Event_Id__c,
+        Event.Subject__c,
+        ToGoogleDateTime(Event.Start_Date__c),
+        ToGoogleDateTime(Event.End_Date__c),
+        Event.Manager_Email__c
+      );
+    }
+  }
+
+  global static void UpdateHttpRequest(
     String EventId,
     String eventSubject,
     String startDate,
@@ -199,8 +202,7 @@ global with sharing class AdhocEventTriggerHandler {
     request.setMethod('PATCH');
     request.setTimeout(120000);
     request.setBody(gen.getAsString());
-    //HttpResponse response = (new Http()).send(request);
-    //
+
     HttpResponse response = new HttpResponse();
     if (Test.isRunningTest() && (mock != null)) {
       response = mock.respond(request);
