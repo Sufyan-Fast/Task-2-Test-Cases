@@ -1,0 +1,212 @@
+global with sharing class AdhocEventTriggerHandler {
+  public static HttpCalloutMock mock = null;
+
+  @future(callout=true)
+  global static void postEvent(Set<Id> Eventids) {
+    for (Adhoc_Event__c Event : [
+      SELECT Id, Subject__c, Start_Date__c, End_Date__c, Manager_Email__c
+      FROM Adhoc_Event__c
+      WHERE id IN :Eventids
+    ]) {
+      PostHttpRequest(
+        Event.Id,
+        Event.Subject__c,
+        ToGoogleDateTime(Event.Start_Date__c),
+        ToGoogleDateTime(Event.End_Date__c),
+        Event.Manager_Email__c
+      );
+    }
+  }
+
+  global static void PostHttpRequest(
+    String EventId,
+    String eventSubject,
+    String startDate,
+    String endDate,
+    String managerEmail
+  ) {
+    JSONGenerator gen = JSON.createGenerator(true);
+    gen.writeStartObject();
+    gen.writeFieldName('end');
+    gen.writeStartObject();
+    gen.writeStringField('dateTime', endDate);
+    gen.writeStringField('timeZone', 'Asia/Karachi');
+    gen.writeEndObject();
+    gen.writeFieldName('start');
+    gen.writeStartObject();
+    gen.writeStringField('dateTime', startDate);
+    gen.writeStringField('timeZone', 'Asia/Karachi');
+    gen.writeEndObject();
+    gen.writeStringField('summary', eventSubject);
+    gen.writeFieldName('attendees');
+    gen.writeStartArray();
+    gen.writeStartObject();
+    gen.writeStringField('email', managerEmail);
+    gen.writeStringField('responseStatus', 'needsAction');
+    gen.writeStringField('displayName', 'Sufyan');
+    gen.writeEndObject();
+    gen.writeStartObject();
+    gen.writeStringField('email', 'sufyan.ashraf@ocloudsolutions.net');
+    gen.writeStringField('responseStatus', 'accepted');
+    gen.writeStringField('displayName', 'sufyan Ashraf');
+    gen.writeBooleanField('organizer', true);
+    gen.writeBooleanField('self', true);
+    gen.writeEndObject();
+    gen.writeEndArray();
+    gen.writeEndObject();
+
+    HttpRequest request = new HttpRequest();
+    request.setEndpoint('callout:Google_Calendar/calendars/primary/events');
+    request.setHeader('Content-Type', 'application/json');
+    request.setMethod('POST');
+    request.setTimeout(120000);
+    request.setBody(gen.getAsString());
+
+    HttpResponse response = new HttpResponse();
+    if (Test.isRunningTest() && (mock != null)) {
+      response = mock.respond(request);
+    } else {
+      response = (new Http()).send(request);
+    }
+
+    Map<String, Object> Obj = (Map<String, Object>) JSON.deserializeUntyped(response.getBody());
+    String Calenderid = String.Valueof(Obj.get('id'));
+
+    List<Adhoc_Event__c> updateCalenderEventId = new List<Adhoc_Event__c>();
+
+    Adhoc_Event__c[] newobj = [SELECT Calender_Event_Id__c FROM Adhoc_Event__c WHERE ID = :EventId];
+    if (newobj.size() > 0) {
+      newobj[0].Calender_Event_Id__c = Calenderid;
+      updateCalenderEventId.add(newobj[0]);
+    }
+
+    if (!updateCalenderEventId.isEmpty()) {
+      update updateCalenderEventId;
+    }
+  }
+
+  public static String ToGoogleDateTime(DateTime SFTime) {
+    String DateStr = String.valueOf(SFTime.date());
+    String timeStr = String.valueOf(SFTime.time());
+    String calenderDataTime = DateStr + 'T' + timeStr;
+    return calenderDataTime;
+  }
+
+  global static void doDelete(List<Adhoc_Event__c> EventList) {
+    List<String> Eventids = new List<String>();
+    for (Adhoc_Event__c adhoc : EventList) {
+      Eventids.add(adhoc.Calender_Event_Id__c);
+    }
+
+    DeleteEvent(Eventids);
+  }
+
+  @future(callout=true)
+  global static void DeleteEvent(List<String> EventId) {
+    for (String ids : EventId) {
+      deleteHttpRequest(ids);
+    }
+  }
+
+  global static void deleteHttpRequest(String EventId) {
+    HttpRequest request = new HttpRequest();
+    request.setEndpoint('callout:Google_Calendar/calendars/primary/events/' + EventId);
+    request.setHeader('Content-Type', 'application/json');
+    request.setMethod('DELETE');
+    request.setTimeout(120000);
+
+    HttpResponse response = new HttpResponse();
+    if (Test.isRunningTest() && (mock != null)) {
+      response = mock.respond(request);
+    } else {
+      response = (new Http()).send(request);
+    }
+  }
+
+  global static void doUpdate(List<Adhoc_Event__c> EventList, List<Adhoc_Event__c> EventListold) {
+    Integer i = 0;
+    List<String> ids = new List<String>();
+    while (i < EventList.size()) {
+      if (
+        EventList[i].Subject__c != EventListold[i].Subject__c ||
+        EventList[i].Manager_Email__c != EventListold[i].Manager_Email__c ||
+        EventList[i].Start_Date__c != EventListold[i].Start_Date__c ||
+        EventList[i].End_Date__c != EventListold[i].End_Date__c
+      ) {
+        ids.add(EventList[i].Id);
+      }
+      i++;
+    }
+    if (!ids.isEmpty()) {
+      updateEvent(ids);
+    }
+  }
+
+  @future(callout=true)
+  global static void updateEvent(List<String> eventids) {
+    for (Adhoc_Event__c Event : [
+      SELECT Id, Calender_Event_Id__c, Subject__c, Start_Date__c, End_Date__c, Manager_Email__c
+      FROM Adhoc_Event__c
+      WHERE id IN :eventids
+    ]) {
+      UpdateHttpRequest(
+        Event.Calender_Event_Id__c,
+        Event.Subject__c,
+        ToGoogleDateTime(Event.Start_Date__c),
+        ToGoogleDateTime(Event.End_Date__c),
+        Event.Manager_Email__c
+      );
+    }
+  }
+  global static void UpdateHttpRequest(
+    String EventId,
+    String eventSubject,
+    String startDate,
+    String endDate,
+    String managerEmail
+  ) {
+    JSONGenerator gen = JSON.createGenerator(true);
+    gen.writeStartObject();
+    gen.writeFieldName('end');
+    gen.writeStartObject();
+    gen.writeStringField('dateTime', endDate);
+    gen.writeStringField('timeZone', 'Asia/Karachi');
+    gen.writeEndObject();
+    gen.writeFieldName('start');
+    gen.writeStartObject();
+    gen.writeStringField('dateTime', startDate);
+    gen.writeStringField('timeZone', 'Asia/Karachi');
+    gen.writeEndObject();
+    gen.writeStringField('summary', eventSubject);
+    gen.writeFieldName('attendees');
+    gen.writeStartArray();
+    gen.writeStartObject();
+    gen.writeStringField('email', managerEmail);
+    gen.writeStringField('responseStatus', 'needsAction');
+    gen.writeStringField('displayName', 'Sufyan');
+    gen.writeEndObject();
+    gen.writeStartObject();
+    gen.writeStringField('email', 'sufyan.ashraf@ocloudsolutions.net');
+    gen.writeStringField('responseStatus', 'accepted');
+    gen.writeStringField('displayName', 'sufyan Ashraf');
+    gen.writeBooleanField('organizer', true);
+    gen.writeBooleanField('self', true);
+    gen.writeEndObject();
+    gen.writeEndArray();
+    gen.writeEndObject();
+
+    HttpRequest request = new HttpRequest();
+    request.setEndpoint('callout:Google_Calendar/calendars/primary/events/' + EventId);
+    request.setHeader('Content-Type', 'application/json');
+    request.setMethod('PATCH');
+    request.setTimeout(120000);
+    request.setBody(gen.getAsString());
+
+    HttpResponse response = new HttpResponse();
+    if (Test.isRunningTest() && (mock != null)) {
+      response = mock.respond(request);
+    } else {
+      response = (new Http()).send(request);
+    }
+  }
+}

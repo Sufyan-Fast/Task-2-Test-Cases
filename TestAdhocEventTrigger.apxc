@@ -1,0 +1,34 @@
+@isTest
+private class TestAdhocEventTrigger 
+{
+  @testSetup
+  static void TestEventsOnAdhocEvent() {
+    Adhoc_Event__c NewEvent = new Adhoc_Event__c();
+    NewEvent.Name = 'Test';
+    NewEvent.Subject__c = 'Testing the Trigger 1';
+    DateTime startTime = DateTime.newInstance(2022, 8, 26, 13, 0, 0);
+    DateTime endTime = DateTime.newInstance(2022, 8, 26, 14, 0, 0);
+    NewEvent.Start_Date__c = startTime;
+    NewEvent.End_Date__c = endTime;
+    NewEvent.Manager_Email__c = 'sufyanashraf5469@gmail.com';
+    AdhocEventTriggerHandler.mock = new MockHttpResponseGenerator();
+    insert NewEvent;
+  }
+
+  @isTest
+  static void TestHttpRequestUpdate() {
+    AdhocEventTriggerHandler.mock = new MockHttpResponseGenerator();
+    Adhoc_Event__c obj = [SELECT id FROM Adhoc_Event__c WHERE Name = 'Test'];
+    obj.Subject__c = 'Testing 2';
+    Database.SaveResult result = Database.update(obj, false);
+    System.assert(result.isSuccess());
+  }
+
+  @isTest
+  static void TestHttpRequestDelete() {
+    AdhocEventTriggerHandler.mock = new MockHttpResponseGenerator();
+    Adhoc_Event__c obj = [SELECT id FROM Adhoc_Event__c WHERE Name = 'Test'];
+    Database.DeleteResult result = Database.Delete(obj, false);
+    System.assert(result.isSuccess());
+  }
+}

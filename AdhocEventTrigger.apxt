@@ -1,0 +1,13 @@
+trigger AdhocEventTrigger on Adhoc_Event__c(after insert, after update, after delete) {
+  if (Trigger.isInsert) {
+    AdhocEventTriggerHandler.postEvent(Trigger.newMap.keySet());
+  }
+  
+  else if (Trigger.isdelete) {
+    AdhocEventTriggerHandler.doDelete(Trigger.old);
+  }
+
+  else if (Trigger.isupdate) {
+    AdhocEventTriggerHandler.doUpdate(Trigger.new, Trigger.old);
+  }
+}
